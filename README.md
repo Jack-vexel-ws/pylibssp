@@ -1,2 +1,2 @@
-# pylibssp
-python bindings for 'libssp' from Z CAM
+# Introduction
+python bindings for 'libssp' library which is from Z CAM
