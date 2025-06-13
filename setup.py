@@ -30,7 +30,7 @@ class CustomInstall(install):
             dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')
             dll_files = ['libssp.so']
         elif system == 'Darwin':
-            # 根据架构选择不同的Mac库目录
+            # use mac_arm64 for arm64 architecture
             if machine == 'arm64':
                 dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')
             else:
@@ -58,17 +58,17 @@ class BuildExt(build_ext):
         print(f"System: {system}")
         print(f"Architecture: {machine}")
         
-        # 根据平台确定库文件目录和扩展名
+        # determine library directory and extension based on platform
         if system == 'Windows':
             lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'win_x64_vs2017')
             lib_ext = '.dll'
-            lib_files = ['libssp.dll']  # 只复制libssp.dll
+            lib_files = ['libssp.dll']
         elif system == 'Linux':
             lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')
             lib_ext = '.so'
             lib_files = ['libssp.so']
         elif system == 'Darwin':
-            # 根据架构选择不同的Mac库目录
+            # use mac_arm64 for arm64 architecture
             if machine == 'arm64':
                 lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')
             else:
@@ -78,7 +78,7 @@ class BuildExt(build_ext):
         else:
             raise ValueError(f"Unsupported system: {system}")
 
-        # 检查源目录中的库文件
+        # check library files in source directory
         if os.path.exists(lib_dir):
             print(f"\nLibrary files in source directory ({lib_dir}):")
             for file in os.listdir(lib_dir):
@@ -88,10 +88,10 @@ class BuildExt(build_ext):
             print(f"\nLibrary directory not found: {lib_dir}")
             raise RuntimeError(f"Required library directory not found: {lib_dir}")
 
-        # 构建扩展
+        # build extension
         build_ext.build_extensions(self)
         
-        # 检查构建目录中的库文件
+        # check library files in build directory
         if self.build_lib:
             build_lib_dir = os.path.join(self.build_lib, 'libssp')
             if os.path.exists(build_lib_dir):
@@ -103,11 +103,11 @@ class BuildExt(build_ext):
                 print(f"\nBuild directory not found: {build_lib_dir}")
                 raise RuntimeError(f"Failed to create build directory: {build_lib_dir}")
 
-        # 复制库文件到构建目录
+        # copy library files to build directory
         if not os.path.exists(build_lib_dir):
             os.makedirs(build_lib_dir)
         
-        # 只复制指定的库文件
+        # copy only specified library files
         for lib_file in lib_files:
             src = os.path.join(lib_dir, lib_file)
             if os.path.exists(src):
@@ -142,7 +142,7 @@ elif system == 'Linux':
     extra_compile_args = ['-std=c++11']
     extra_link_args = []
 elif system == 'Darwin':
-    # 根据架构选择不同的Mac库目录
+    # use mac_arm64 for arm64 architecture
     if machine == 'arm64':
         library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')]
     else:
