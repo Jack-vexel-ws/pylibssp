@@ -1,6 +1,1 @@
-
-recursive-include libssp/include *.h *.hpp
-recursive-include libssp/lib *.a *.lib
-
-include libssp/*.dll
 include README.md

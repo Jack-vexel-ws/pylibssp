@@ -23,6 +23,7 @@ class SspClient:
 
         self._client = _libssp.SspClient(ip, buf_size, port, stream_style)
         self._running = False
+        self._is_hlg = False
         
         # Initialize callback handlers
         self._on_h264_data = None
@@ -37,8 +38,9 @@ class SspClient:
         """
         Start the SSP client.
         """
-        self._running = True
-        self._client.start()
+        if not self._running:
+            self._running = True
+            self._client.start()
         return self
     
     def stop(self):
@@ -203,6 +205,46 @@ class SspClient:
         self._on_recv_buffer_full = callback
         self._client.set_on_recv_buffer_full_callback(callback)
 
+    @property
+    def is_hlg(self):
+        """
+        Get the HLG mode status.
+        
+        Returns:
+            bool: True if HLG mode is enabled, False otherwise.
+        """
+        return self._is_hlg
+    
+    @is_hlg.setter
+    def is_hlg(self, value):
+        """
+        Set the HLG mode.
+        
+        Args:
+            value (bool): True to enable HLG mode, False to disable.
+        """
+        self._is_hlg = value
+        self._client.setIsHlg(value)
+
+    def set_capability(self, capability):
+        """
+        Set the client capability flags.
+        
+        Args:
+            capability (int): The capability flags to set. Can be a combination of:
+                - SSP_CAPABILITY_IGNORE_HEARTBEAT_DISABLE_ENC: Ignore heartbeat disable encoding
+        """
+        self._client.setCapability(capability)
+
+    def set_debug_print(self, debug_print=True):
+        """
+        Set the debug print flag.
+        
+        Args:
+            debug_print (bool, optional): The debug print flag. Defaults to True.
+        """
+        self._client.setDebugPrint(debug_print)
+
 # Export constants
 STREAM_DEFAULT = _libssp.STREAM_DEFAULT
 STREAM_MAIN = _libssp.STREAM_MAIN
@@ -220,3 +262,6 @@ ERROR_SSP_PROTOCOL_VERSION_GT_SERVER = _libssp.ERROR_SSP_PROTOCOL_VERSION_GT_SER
 ERROR_SSP_PROTOCOL_VERSION_LT_SERVER = _libssp.ERROR_SSP_PROTOCOL_VERSION_LT_SERVER
 ERROR_SSP_CONNECTION_FAILED = _libssp.ERROR_SSP_CONNECTION_FAILED
 ERROR_SSP_CONNECTION_EXIST = _libssp.ERROR_SSP_CONNECTION_EXIST
+
+# Export capability flags
+SSP_CAPABILITY_IGNORE_HEARTBEAT_DISABLE_ENC = _libssp.SSP_CAPABILITY_IGNORE_HEARTBEAT_DISABLE_ENC

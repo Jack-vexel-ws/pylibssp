@@ -1,24 +1,123 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_namespace_packages
 from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
 import os
 import platform
 import io
 import sys
+import shutil
 
 # Ensure UTF-8 encoding is used
 sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
 
-# Determine current system
+# Determine current system and architecture
 system = platform.system()
+machine = platform.machine()
 
 # Get absolute path of current directory
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
+class CustomInstall(install):
+    def run(self):
+        install.run(self)
+        
+        # Copy dynamic library files to package root directory
+        if system == 'Windows':
+            dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'win_x64_vs2017')
+            # libssp.dll is release version DLL file in win_x64_vs2017 directory
+            dll_files = ['libssp.dll']
+        elif system == 'Linux':
+            dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')
+            dll_files = ['libssp.so']
+        elif system == 'Darwin':
+            # 根据架构选择不同的Mac库目录
+            if machine == 'arm64':
+                dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')
+            else:
+                dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac')
+            dll_files = ['libssp.dylib']
+        else:
+            raise ValueError(f"Unsupported system: {system}")
+
+        # Copy dynamic library files to package root directory
+        target_dir = os.path.join(self.install_lib, 'libssp')
+        for dll_file in dll_files:
+            src = os.path.join(dll_dir, dll_file)
+            if os.path.exists(src):
+                dst = os.path.join(target_dir, dll_file)
+                shutil.copy2(src, dst)
+                print(f"Copied {dll_file} to {dst}")
+
 class BuildExt(build_ext):
     def build_extensions(self):
-        for ext in self.extensions:
-            ext.extra_compile_args += ['-std=c++11']
+        print("\n=== Build Information ===")
+        print(f"Build directory: {self.build_lib}")
+        print(f"Package data: {self.distribution.package_data}")
+        print(f"Current directory: {os.getcwd()}")
+        print(f"Base directory: {base_dir}")
+        print(f"System: {system}")
+        print(f"Architecture: {machine}")
+        
+        # 根据平台确定库文件目录和扩展名
+        if system == 'Windows':
+            lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'win_x64_vs2017')
+            lib_ext = '.dll'
+            lib_files = ['libssp.dll']  # 只复制libssp.dll
+        elif system == 'Linux':
+            lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')
+            lib_ext = '.so'
+            lib_files = ['libssp.so']
+        elif system == 'Darwin':
+            # 根据架构选择不同的Mac库目录
+            if machine == 'arm64':
+                lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')
+            else:
+                lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac')
+            lib_ext = '.dylib'
+            lib_files = ['libssp.dylib']
+        else:
+            raise ValueError(f"Unsupported system: {system}")
+
+        # 检查源目录中的库文件
+        if os.path.exists(lib_dir):
+            print(f"\nLibrary files in source directory ({lib_dir}):")
+            for file in os.listdir(lib_dir):
+                if file.endswith(lib_ext):
+                    print(f"  - {file}")
+        else:
+            print(f"\nLibrary directory not found: {lib_dir}")
+            raise RuntimeError(f"Required library directory not found: {lib_dir}")
+
+        # 构建扩展
         build_ext.build_extensions(self)
+        
+        # 检查构建目录中的库文件
+        if self.build_lib:
+            build_lib_dir = os.path.join(self.build_lib, 'libssp')
+            if os.path.exists(build_lib_dir):
+                print(f"\nLibrary files in build directory ({build_lib_dir}):")
+                for file in os.listdir(build_lib_dir):
+                    if file.endswith(lib_ext):
+                        print(f"  - {file}")
+            else:
+                print(f"\nBuild directory not found: {build_lib_dir}")
+                raise RuntimeError(f"Failed to create build directory: {build_lib_dir}")
+
+        # 复制库文件到构建目录
+        if not os.path.exists(build_lib_dir):
+            os.makedirs(build_lib_dir)
+        
+        # 只复制指定的库文件
+        for lib_file in lib_files:
+            src = os.path.join(lib_dir, lib_file)
+            if os.path.exists(src):
+                dst = os.path.join(build_lib_dir, lib_file)
+                shutil.copy2(src, dst)
+                print(f"Copied {lib_file} to {dst}")
+            else:
+                print(f"Warning: {lib_file} not found in {lib_dir}")
+
+        print("\nBuild completed successfully")
 
 # Import pybind11 to get include path
 import pybind11
@@ -43,7 +142,11 @@ elif system == 'Linux':
     extra_compile_args = ['-std=c++11']
     extra_link_args = []
 elif system == 'Darwin':
-    library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'mac')]
+    # 根据架构选择不同的Mac库目录
+    if machine == 'arm64':
+        library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')]
+    else:
+        library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'mac')]
     libraries = ['libssp']
     extra_compile_args = ['-std=c++11']
     extra_link_args = []
@@ -63,5 +166,10 @@ ssp_modules = Extension(
 
 setup(
     ext_modules = [ssp_modules],
-    cmdclass={"build_ext": BuildExt},
+    cmdclass={
+        "build_ext": BuildExt,
+        "install": CustomInstall
+    },
+    packages=find_namespace_packages(include=["libssp", "libssp.*"]),
+    include_package_data=True,
 )

@@ -4,6 +4,10 @@
 #include <memory>
 #include <string>
 #include <functional>
+#include <mutex>
+#include <condition_variable>
+#include <iostream>
+#include <atomic>
 
 // Include libssp header files
 #include "imf/net/loop.h"
@@ -11,6 +15,7 @@
 #include "imf/ssp/sspclient.h"
 
 namespace py = pybind11;
+
 
 // Global variables for storing Python callback functions
 struct PythonCallbacks {
@@ -23,26 +28,85 @@ struct PythonCallbacks {
     py::function on_recv_buffer_full;
 };
 
-// Wrapper for SspClient class
+// Python c++ extension wrapper for imf::SspClient class from zcam c++ libssp library
 class PySspClient {
 public:
     PySspClient(const std::string& ip, size_t bufSize, unsigned short port = 9999, uint32_t streamStyle = imf::STREAM_DEFAULT)
-        : thread_loop_(nullptr), client_(nullptr), ip_(ip), bufSize_(bufSize), port_(port), streamStyle_(streamStyle) {
-        // Create thread loop
+        : thread_loop_(nullptr), client_(nullptr), client_running_(false), thread_running_(false), 
+          ip_(ip), bufSize_(bufSize), port_(port), streamStyle_(streamStyle), isHlg_(false), capability_(0),
+          threadLoop_executed_(false), debug_print_(true)
+    {
+        // check stream style, if invalid, use STREAM_DEFAULT instead
+        if (streamStyle_ != imf::STREAM_DEFAULT && streamStyle_ != imf::STREAM_MAIN && streamStyle_ != imf::STREAM_SEC) {
+            _debug_print("Invalid stream style: " + std::to_string(streamStyle) + ", use STREAM_DEFAULT instead");
+            streamStyle_ = imf::STREAM_DEFAULT;
+        }
+
+        // get stream style string
+        auto _getStreamStyleString = [](uint32_t style) -> std::string 
+        {
+            switch (style) 
+            {
+                case imf::STREAM_DEFAULT:
+                    return "STREAM_DEFAULT";
+                case imf::STREAM_MAIN:
+                    return "STREAM_MAIN";
+                case imf::STREAM_SEC:
+                    return "STREAM_SEC";
+                default:
+                    return "STREAM_UNKNOWN";
+            }
+        };
+
+        // print input parametersdebug message
+        _debug_print("Initializing PySspClient with IP: " + ip_ + ", port: " + std::to_string(port_));
+        _debug_print("bufSize: " + std::to_string(bufSize_) + ", streamStyle: " + _getStreamStyleString(streamStyle_));
+
+        // Create thread loop and set callback functions
+        _debug_print("Creating thread loop...");
         thread_loop_ = std::make_unique<imf::ThreadLoop>([this](imf::Loop* loop) {
+            _debug_print("Thread loop started");
+
+            _debug_print("  Creating imf::SspClient in thread loop thread");
+            
             // Create SspClient in thread loop
             client_ = std::make_unique<imf::SspClient>(ip_, loop, bufSize_, port_, streamStyle_);
+
             // Initialize client
+            _debug_print("  Initializing imf::SspClient");
             client_->init();
+            
+            // Set HLG mode
+            client_->setIsHlg(isHlg_);
+
+            // Set capability
+            if (capability_ != 0) {
+                client_->setCapability(capability_);
+            }
+
             // Set all callbacks
-            updateCallbacks();
-            // client start
-            client_->start();
+            _debug_print("  Setting callbacks for imf::SspClient");
+            _setCallbacks();
+
+            // Set a flag to indicate thread_loop PreLoopCallback execution is completed
+            {
+                std::lock_guard<std::mutex> lock(threadLoop_mutex_);
+                threadLoop_executed_ = true;
+            }
+
+            threadLoop_cv_.notify_one();
         });
+
+        _debug_print("Thread loop created");
     }
 
-    void updateCallbacks() {
-        if (!client_) return;
+    void _setCallbacks() {
+        if (!client_) {
+            _debug_print("Warning: _setCallbacks called but imf::SspClient is null");
+            return;
+        }
+
+        _debug_print("set callbacks for imf::SspClient");
 
         // Set callback functions
         if (callbacks_.on_h264_data) {
@@ -132,23 +196,115 @@ public:
         }
     };
     
+    void _waitClientInited() {
+        _debug_print("  Waiting for imf::SspClient has been created and initialized...");
+        std::unique_lock<std::mutex> lock(threadLoop_mutex_);
+        if (threadLoop_cv_.wait_for(lock, std::chrono::seconds(30), [this] { return threadLoop_executed_; })) {
+            _debug_print("  imf::SspClient has been created and initialized");
+        } else {
+            _debug_print("  Timeout (30 sec) waiting for imf::SspClient to be created and initialized...");
+        }
+    }
+
+    // add debug print function for trace debug message
+    void _debug_print(const std::string& message) {
+        //use stderr to avoid blocking Python main thread
+        //py::gil_scoped_acquire acquire;
+        //py::print("[DEBUG]", message);
+        if (debug_print_) {
+            std::cerr << "[PySspClient DEBUG] " << message << std::endl;
+        }
+    }
+
     ~PySspClient() {
+        _debug_print("~PySspClient enter");
+
+        // stop imf::SspClient it is running
         stop();
+
+        // stop thread loop if it is running
+        if (thread_loop_ && thread_running_.load()) {
+            _debug_print("  ~PySspClient stopping thread loop...");
+            thread_loop_->stop();
+            thread_running_.store(false);
+        }
+
+        // release imf::SspClient if it is not null
+        if (client_) {
+            _debug_print("  ~PySspClient release imf::SspClient");
+            client_.reset();
+        }
+
+        // release thread loop if it is not null
+        if (thread_loop_) {
+            _debug_print("  ~PySspClient release thread loop");
+            thread_loop_.reset();
+        }
+
+        _debug_print("~PySspClient leave");
     }
     
     void start() {
-        if (thread_loop_) {
+        if (!thread_loop_) {
+            _debug_print("Warning: Cannot start, thread_loop is null");
+            return;
+        }
+
+        _debug_print("PySspClient::start() enter");
+
+        if (thread_loop_ && !thread_running_.load()) {
+            _debug_print("  Detect thread_loop is not running, starting it...");
             thread_loop_->start();
+            thread_running_.store(true);
+        }
+
+        // wait for thread_loop has completed loop callback execution
+        _waitClientInited();
+
+        // client start
+        if (client_ && !client_running_.load()) {
+            _debug_print("  imf::SspClient to start...");
+
+            // update imf::SspClient callback functions
+            _setCallbacks();
+
+            client_->start();
+            client_running_.store(true);
+
+            _debug_print("  imf::SspClient started successfully");
+        }
+        else {
+            if (!client_) {
+                _debug_print("  imf::SspClient client is null, failed to start");
             }
+            else {
+                _debug_print("  imf::SspClient is already running");
+            }
+        }
+
+        _debug_print("PySspClient::start() leave");
     }
     
     void stop() {
-        if (client_) {
-            client_->stop();
+        _debug_print("PySspClient::stop() enter");
+
+        if (client_ && client_running_.load()) {
+            _debug_print("  Stopping imf::SspClient if it is running...");
+            
+            // release GIL before calling client_->stop(), this is very important, 
+            // otherwise the Python main thread will be blocked and the program will hang
+            // because the client_->stop() will call a python callback - on_disconnected()
+            // which will aquire the GIL
+            {
+                py::gil_scoped_release release;
+                client_->stop();
+                client_running_.store(false);
+            }
+            
+            _debug_print("  imf::SspClient stopped");
         }
-        if (thread_loop_) {
-            thread_loop_->stop();
-        }
+
+        _debug_print("PySspClient::stop() leave");
     }
     
     void set_on_h264_data_callback(py::function callback) {
@@ -179,6 +335,18 @@ public:
         callbacks_.on_recv_buffer_full = callback;
     }
 
+    void setIsHlg(bool isHlg) {
+        isHlg_.store(isHlg);
+    }
+
+    void setCapability(uint32_t capability) {
+        capability_.store(capability);
+    }
+
+    void setDebugPrint(bool debug_print) {
+        debug_print_.store(debug_print);
+    }
+
 private:
     std::unique_ptr<imf::ThreadLoop> thread_loop_;
     std::unique_ptr<imf::SspClient> client_;
@@ -187,6 +355,18 @@ private:
     size_t bufSize_;
     unsigned short port_;
     uint32_t streamStyle_;
+    std::atomic<bool> client_running_;
+    std::atomic<bool> thread_running_;
+    std::atomic<bool> isHlg_;
+    std::atomic<uint32_t> capability_;
+
+    // variables for waiting thread_loop callback function execution
+    std::mutex threadLoop_mutex_;
+    std::condition_variable threadLoop_cv_;
+    bool threadLoop_executed_;
+
+    // control debug print
+    std::atomic<bool> debug_print_;
 };
 
 PYBIND11_MODULE(_libssp, m) {
@@ -210,6 +390,9 @@ PYBIND11_MODULE(_libssp, m) {
     m.attr("ERROR_SSP_PROTOCOL_VERSION_LT_SERVER") = py::int_(ERROR_SSP_PROTOCOL_VERSION_LT_SERVER);
     m.attr("ERROR_SSP_CONNECTION_FAILED") = py::int_(ERROR_SSP_CONNECTION_FAILED);
     m.attr("ERROR_SSP_CONNECTION_EXIST") = py::int_(ERROR_SSP_CONNECTION_EXIST);
+
+    // Define capability flags
+    m.attr("SSP_CAPABILITY_IGNORE_HEARTBEAT_DISABLE_ENC") = py::int_(SSP_CAPABILITY_IGNORE_HEARTBEAT_DISABLE_ENC);
     
     // Define SspClient class
     py::class_<PySspClient>(m, "SspClient")
@@ -217,6 +400,9 @@ PYBIND11_MODULE(_libssp, m) {
              py::arg("ip"), py::arg("bufSize"), py::arg("port") = 9999, py::arg("streamStyle") = static_cast<uint32_t>(imf::STREAM_DEFAULT))
         .def("start", &PySspClient::start)
         .def("stop", &PySspClient::stop)
+        .def("setIsHlg", &PySspClient::setIsHlg)
+        .def("setCapability", &PySspClient::setCapability)
+        .def("setDebugPrint", &PySspClient::setDebugPrint)
         .def("set_on_h264_data_callback", &PySspClient::set_on_h264_data_callback)
         .def("set_on_audio_data_callback", &PySspClient::set_on_audio_data_callback)
         .def("set_on_meta_callback", &PySspClient::set_on_meta_callback)
