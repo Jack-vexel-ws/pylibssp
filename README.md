@@ -10,35 +10,35 @@ I will try to support linux and mac in the future.
 
 If you want to build python 'libssp' from source code, please make sure the build environment :
 
-[**Windows 10(11) 64bit**] (My current build environment)
-> Visual Studio 2015 (or later) with C++ build tools installed\
-> Python 3.11 (or later)
+* [**Windows 10(11) 64bit**] (My current build environment)
+  * Visual Studio 2015 (or later) with C++ build tools installed\
+  * Python 3.11 (or later)
 
-[**Linux**] (will be confirmed in future)
-> gcc 11 (or later)\
-> python 3.11 (or later)
+* [**Linux**] (will be confirmed in future)
+  * gcc 11 (or later)\
+  * python 3.11 (or later)
 
-[**Mac**] (will be confirmed in future)
-> Xcode 14 (or later)\
-> python 3.11 (or later)
+* [**Mac**] (will be confirmed in future)
+  * Xcode 14 (or later)\
+  * python 3.11 (or later)
 
 then follow the steps below:
 
--1. make a project folder in your computer and clone this repo
-```shell
-mkdir pylibssp
-cd pylibssp
-git clone https://github.com/Jack-vexel-ws/pylibssp.git
-```
--2. install dependencies
-```shell
-pip install -r requirements.txt
-```
--3. build and install libssp to current environment
+1. make a project folder in your computer and clone this repo
+    ```shell
+    mkdir pylibssp
+    cd pylibssp
+    git clone https://github.com/Jack-vexel-ws/pylibssp.git
+    ```
+2. install dependencies
+    ```shell
+    pip install -r requirements.txt
+    ```
+3. build and install libssp to current environment
 
-```shell
-pip install . --no-build-isolation -v
-```
+    ```shell
+    pip install . --no-build-isolation -v
+    ```
 
 If no any error occurs, you should be able to import 'libssp' in your python code now.
 
@@ -87,8 +87,8 @@ client.start()
 # Stop client
 client.stop()
 ```
-**Please note, if you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is 'idle'**
-In Example.py, there is sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
+**NOTE**
+> If you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is 'idle'**. In Example.py, there is sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
 
 [set the stream index (0 or 1) http command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md#Network-streaming)
 ```
