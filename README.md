@@ -1,7 +1,7 @@
 # Introduction
-**python wrapper for 'libssp' library which is a c++ library developed by Z CAM**
+**Python wrapper for 'libssp' library which is a c++ library developed by Z CAM**
 
-if you want to know more about 'libssp', please visit [**C++ libssp**](https://github.com/imaginevision/libssp)
+if you want to know more about '**libssp**', please visit [**C++ libssp**](https://github.com/imaginevision/libssp)
 
 For now, 'pylibssp' is only tested on **Windows 11 64bit**, but all source code should be platform independent. 
 I will try to support linux and mac in the future.
@@ -10,15 +10,15 @@ I will try to support linux and mac in the future.
 
 If you want to build python 'libssp' from source code, please make sure the build environment :
 
-* [**Windows 10(11) 64bit**] (My current build environment)
+* **Windows 10(11) 64bit** (My current build environment)
   * Visual Studio 2015 (or later) with C++ build tools installed\
   * Python 3.11 (or later)
 
-* [**Linux**] (will be confirmed in future)
+* **Linux** (*will be confirmed in future*)
   * gcc 11 (or later)\
   * python 3.11 (or later)
 
-* [**Mac**] (will be confirmed in future)
+* **Mac** (*will be confirmed in future*)
   * Xcode 14 (or later)\
   * python 3.11 (or later)
 
@@ -88,7 +88,7 @@ client.start()
 client.stop()
 ```
 **NOTE**
-> If you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is 'idle'**. In Example.py, there is sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
+> If you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is 'idle'. In Example.py, there is sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
 
 [set the stream index (0 or 1) http command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md#Network-streaming)
 ```
@@ -103,4 +103,4 @@ http://192.168.1.100/ctrl/stream_setting?index=stream0&action=query
 if you want to setting camera or its streaming parameters, please refer to the ZCAM offical [HTTP API Document](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md)
 
 # License
-MITclient.start()
+MIT License
