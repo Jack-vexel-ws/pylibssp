@@ -76,18 +76,6 @@ public:
             _debug_print("  Initializing imf::SspClient");
             client_->init();
             
-            // Set HLG mode
-            client_->setIsHlg(isHlg_);
-
-            // Set capability
-            if (capability_ != 0) {
-                client_->setCapability(capability_);
-            }
-
-            // Set all callbacks
-            _debug_print("  Setting callbacks for imf::SspClient");
-            _setCallbacks();
-
             // Set a flag to indicate thread_loop PreLoopCallback execution is completed
             {
                 std::lock_guard<std::mutex> lock(threadLoop_mutex_);
@@ -106,10 +94,11 @@ public:
             return;
         }
 
-        _debug_print("set callbacks for imf::SspClient");
+        _debug_print("imf::SspClient set callbacks...");
 
         // Set callback functions
         if (callbacks_.on_h264_data) {
+            _debug_print("  imf::SspClient set on_h264_data callback");
             client_->setOnH264DataCallback([this](imf::SspH264Data* h264) {
                 // Create Python dictionary to store H264 data
                 py::gil_scoped_acquire acquire;
@@ -127,6 +116,7 @@ public:
         }
         
         if (callbacks_.on_audio_data) {
+            _debug_print("  imf::SspClient set on_audio_data callback");
             client_->setOnAudioDataCallback([this](imf::SspAudioData* audio) {
                 py::gil_scoped_acquire acquire;
                 py::dict data;
@@ -140,6 +130,7 @@ public:
         }
         
         if (callbacks_.on_meta) {
+            _debug_print("  imf::SspClient set on_meta callback");
             client_->setOnMetaCallback([this](imf::SspVideoMeta* v, imf::SspAudioMeta* a, imf::SspMeta* m) {
                 py::gil_scoped_acquire acquire;
                 
@@ -168,6 +159,7 @@ public:
         }
         
         if (callbacks_.on_disconnected) {
+            _debug_print("  imf::SspClient set on_disconnected callback");
             client_->setOnDisconnectedCallback([this]() {
                 py::gil_scoped_acquire acquire;
                 callbacks_.on_disconnected();
@@ -175,6 +167,7 @@ public:
         }
             
         if (callbacks_.on_connected) {
+            _debug_print("  imf::SspClient set on_connected callback");
             client_->setOnConnectionConnectedCallback([this]() {
                 py::gil_scoped_acquire acquire;
                 callbacks_.on_connected();
@@ -182,6 +175,7 @@ public:
         }
         
         if (callbacks_.on_exception) {
+            _debug_print("  imf::SspClient set on_exception callback");
             client_->setOnExceptionCallback([this](int code, const char* description) {
                 py::gil_scoped_acquire acquire;
                 callbacks_.on_exception(code, description);
@@ -189,6 +183,7 @@ public:
         }
         
         if (callbacks_.on_recv_buffer_full) {
+            _debug_print("  imf::SspClient set on_recv_buffer_full callback");
             client_->setOnRecvBufferFullCallback([this]() {
                 py::gil_scoped_acquire acquire;
                 callbacks_.on_recv_buffer_full();
@@ -263,13 +258,29 @@ public:
 
         // client start
         if (client_ && !client_running_.load()) {
-            _debug_print("  imf::SspClient to start...");
+            _debug_print("  imf::SspClient not started, prepare to start...");
+            
+            // Set HLG mode
+            _debug_print("  imf::SspClient set HLG mode = " + std::to_string(isHlg_));
+            client_->setIsHlg(isHlg_);
+            
+            // Set capability
+            _debug_print("  imf::SspClient set capability = " + std::to_string(capability_));
+            if (capability_ != 0) {
+                client_->setCapability(capability_);
+            }
 
-            // update imf::SspClient callback functions
+            // Set all callbacks
+            _debug_print("  imf::SspClient set callbacks");
             _setCallbacks();
 
-            client_->start();
-            client_running_.store(true);
+            // start imf::SspClient
+            _debug_print("  imf::SspClient to start...");
+            {
+                py::gil_scoped_release release;
+                client_->start();
+                client_running_.store(true);
+            }
 
             _debug_print("  imf::SspClient started successfully");
         }
