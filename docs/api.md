@@ -1,4 +1,4 @@
-# PyLibSSP API Documentation
+# 'libssp' Python API Documentation
 
 ## SspClient Class
 
