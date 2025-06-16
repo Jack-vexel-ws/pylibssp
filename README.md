@@ -26,6 +26,7 @@ pylibssp/
 ├── setup.cfg                   ← setup configuration
 ├── setup.py                    ← setup script     
 └── MANIFEST.in                 ← manifest file
+└── README.md                   ← this file
 ```
 
 # Build and test from source code
@@ -75,8 +76,16 @@ python example.py
 
 according to prompt to input your camera IP and select stream index, then streaming should start. You will see the video and audio meta data and streaming data from the callback functions. 'Example.py' print these data to console.
 
-### Rebuild or clean install
+### Rebuild or clean
 
+```shell
+# uninstall libssp
+python -m pip uninstall libssp -y
+python setup.py clean -all
+
+# build and install again
+pip install . --no-build-isolation -v
+```
 
 # Usage
 
