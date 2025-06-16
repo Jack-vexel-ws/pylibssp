@@ -1,9 +1,9 @@
 # Introduction
-*python wrapper for 'libssp' library which is a c++ library developed by Z CAM*
+**python wrapper for 'libssp' library which is a c++ library developed by Z CAM**
 
 if you want to know more about 'libssp', please visit [**C++ libssp**](https://github.com/imaginevision/libssp)
 
-For now, pylibssp is only tested on **Windows 11 64bit**, but all source code should be platform independent. 
+For now, 'pylibssp' is only tested on **Windows 11 64bit**, but all source code should be platform independent. 
 I will try to support linux and mac in the future.
 
 # Build and test from source code
@@ -25,21 +25,18 @@ If you want to build python 'libssp' from source code, please make sure the buil
 then follow the steps below:
 
 -1. make a project folder in your computer and clone this repo
-```
+```shell
 mkdir pylibssp
 cd pylibssp
 git clone https://github.com/Jack-vexel-ws/pylibssp.git
 ```
 -2. install dependencies
-```
+```shell
 pip install -r requirements.txt
 ```
 -3. build and install libssp to current environment
 
-Before building, you need to to be sure you have 'MSVC c++ compiler' (MSVC 2015 or later) installed in your computer.
-Compiling 'libssp' c++ python extension (libssp/_libssp.cpp) will need MSVC c++ compiler
-
-```
+```shell
 pip install . --no-build-isolation -v
 ```
 
@@ -49,23 +46,23 @@ If no any error occurs, you should be able to import 'libssp' in your python cod
 
 After building 'libssp' successfully, you can test it by running the example code in 'pylibssp/test' folder.
 
-```
+```shell
 cd pylibssp/test
 python example.py
 ```
 
-according to prompt to input your camera IP and select stream index, then streaming should start. You will see the video and audio meta data and streaming data from the callback functions. Example.py print these data to console.
+according to prompt to input your camera IP and select stream index, then streaming should start. You will see the video and audio meta data and streaming data from the callback functions. 'Example.py' print these data to console.
 
 # Usage
 
-If you did not want to build from source code, you can install libssp by pip directly.
+If you did not want to build from source code, you can install 'libssp' by pip directly.
 
 Open a command prompt in windows and run
-```
+```shell
 pip install libssp
 ```
-In your python code, import libssp and create your SspClient instance.
-```
+In your python code, import 'libssp' and create your 'SspClient' instance.
+```python
 import libssp
 
 client = libssp.SspClient(camera_ip, 0x400000, 9999, libssp.STREAM_DEFAULT)
@@ -93,17 +90,17 @@ client.stop()
 **Please note, if you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is 'idle'**
 In Example.py, there is sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
 
-set the stream index (0 or 1) http command
+[set the stream index (0 or 1) http command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md#Network-streaming)
 ```
 http://192.168.1.100/ctrl/set?send_stream=Stream0
 or
 http://192.168.1.100/ctrl/set?send_stream=Stream1
 ```
-query the streaming status http command
+[query the streaming status http command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md#Network-streaming)
 ```
 http://192.168.1.100/ctrl/stream_setting?index=stream0&action=query
 ```
-if you want to setting the streaming parameters, please refer to the ZCAM offical [HTTP API Document](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md)
+if you want to setting camera or its streaming parameters, please refer to the ZCAM offical [HTTP API Document](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md)
 
 # License
 MITclient.start()
