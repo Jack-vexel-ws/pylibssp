@@ -6,12 +6,34 @@ if you want to know more about '**libssp**', please visit [**C++ libssp**](https
 For now, 'pylibssp' is only tested on **Windows 11 64bit**, but all source code should be platform independent. 
 I will try to support linux and mac in the future.
 
+# project folder
+
+'pylibssp' project folder structure is as follows:
+
+```
+pylibssp/
+├── libssp/
+│   ├── __init__.py
+│   ├── _libssp.cpp             ← pybind11 c++ extension implementation
+│   ├── sspclient.py            ← python wrapper
+│   ├── include/                ← libssp c++ headers，used for compiling
+│   └── lib/                    ← .lib/.a/.dll files，used for compiling
+├── docs/ 
+│   ├── api.md                  ← python sspclient class api document
+├── test/
+│   ├── example.py              ← example code for demonstration
+├── pyproject.toml              ← configuration
+├── setup.cfg                   ← setup configuration
+├── setup.py                    ← setup script     
+└── MANIFEST.in                 ← manifest file
+```
+
 # Build and test from source code
 
 If you want to build python 'libssp' from source code, please make sure the build environment :
 
 * **Windows 10(11) 64bit** (My current build environment)
-  * Visual Studio 2015 (or later) with C++ build tools installed\
+  * Visual Studio 2017 (or later) with C++ build tools installed\
   * Python 3.11 (or later)
 
 * **Linux** (*will be confirmed in future*)
@@ -42,7 +64,7 @@ then follow the steps below:
 
 If no any error occurs, you should be able to import 'libssp' in your python code now.
 
-# Test
+### Test
 
 After building 'libssp' successfully, you can test it by running the example code in 'pylibssp/test' folder.
 
@@ -52,6 +74,9 @@ python example.py
 ```
 
 according to prompt to input your camera IP and select stream index, then streaming should start. You will see the video and audio meta data and streaming data from the callback functions. 'Example.py' print these data to console.
+
+### Rebuild or clean install
+
 
 # Usage
 
