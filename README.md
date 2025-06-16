@@ -62,6 +62,11 @@ Open a command prompt in windows and run
 pip install libssp
 ```
 In your python code, import 'libssp' and create your 'SspClient' instance.
+
+'SspClient' Python API is similar to 'libssp' c++ library, please refer to [API](https://github.com/Jack-vexel-ws/pylibssp/blob/main/docs/api.md) documents in 'pylibssp/docs' folder for more details.
+
+Here is a code example:
+
 ```python
 import libssp
 
