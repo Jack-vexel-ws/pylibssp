@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 Example script demonstrating how to use the pyssp library to connect to a Z CAM camera
 and receive video and audio streams from SspClient
@@ -9,10 +6,14 @@ and receive video and audio streams from SspClient
 import time
 import sys
 import threading
+import requests
+import json
+
 import libssp
 
 # Camera IP address
 camera_ip = None
+stream_index = 1
 
 # Status line for video and audio
 video_status = ""
@@ -23,6 +24,78 @@ last_pts = 0
 
 # Global event for stopping the client thread
 stop_event = threading.Event()
+
+# query stream status and if it is not idle, return False
+def query_stream_settings(ip, stream_index):
+    """
+    query stream settings
+    :param ip: camera IP address
+    :param stream_index: stream index (0 for stream0, 1 for stream1)
+    :return: (bool, dict, str) - (success, stream settings, error message)
+    """
+    try:
+        url = f"http://{ip}/ctrl/stream_setting?index=stream{stream_index}&action=query"
+        print(f"\nQuerying {ip} Stream{stream_index} settings with: {url}")
+        
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        
+        result = response.json()
+        print(f"\n{ip} Stream{stream_index} Settings:")
+        print(f"  Stream Index: {result.get('streamIndex', 'N/A')}")
+        print(f"  Encoder Type: {result.get('encoderType', 'N/A')}")
+        print(f"  Bit Width: {result.get('bitwidth', 'N/A')}")
+        print(f"  Resolution: {result.get('width', 'N/A')}x{result.get('height', 'N/A')}")
+        print(f"  FPS: {result.get('fps', 'N/A')}")
+        print(f"  Sample Unit: {result.get('sample_unit', 'N/A')}")
+        print(f"  Bitrate: {result.get('bitrate', 'N/A')} kbps")
+        print(f"  GOP: {result.get('gop_n', 'N/A')}")
+        print(f"  Rotation: {result.get('rotation', 'N/A')}")
+        print(f"  Split Duration: {result.get('splitDuration', 'N/A')} seconds")
+        print(f"  Status: {result.get('status', 'N/A')}")
+        
+        if result.get('status') == 'idle':
+            print(f"  {ip} Stream{stream_index} is idle...")
+            return True, result, ""
+        else:
+            return False, result, f"Stream is not idle, current status: {result.get('status')}"
+            
+    except requests.exceptions.RequestException as e:
+        return False, None, f"HTTP request failed: {str(e)}"
+    except json.JSONDecodeError:
+        return False, None, "Invalid JSON response"
+    except Exception as e:
+        return False, None, f"Unexpected error: {str(e)}"
+
+def sent_stream_index(ip, stream_index):
+    """
+    send stream index to camera
+    :param ip: camera IP address
+    :param stream_index: stream index (0 for stream0, 1 for stream1)
+    :return: (bool, str) - (success, error message)
+    """
+    try:
+        url = f"http://{ip}/ctrl/set?send_stream=Stream{stream_index}"
+        print(f"\nSending request to set Stream{stream_index} with: {url}")
+        
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        
+        result = response.json()
+        print(f"Response: {result}")
+        
+        if result.get('code') == 0:
+            print(f"{ip} Stream{stream_index} set successfully...")
+            return True, ""
+        else:
+            return False, f"Error code: {result.get('code')}, message: {result.get('msg')}"
+            
+    except requests.exceptions.RequestException as e:
+        return False, f"HTTP request failed: {str(e)}"
+    except json.JSONDecodeError:
+        return False, "Invalid JSON response"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
 
 def get_video_encoder_name(encoder_type):
     """
@@ -127,8 +200,13 @@ def on_recv_buffer_full():
     print("\nReceive buffer is full")
 
 def run_client():
+    
     if camera_ip is None:
         print("\nNo invalid camera IP, exit")
+        return
+    
+    if stream_index != 0 and stream_index != 1:
+        print(f"\nInvalid stream index {stream_index}, exit")
         return
     
     client = None
@@ -139,7 +217,8 @@ def run_client():
         
         # Create SSP client
         # Buffer size set to 4MB, streaming style use STREAM_DEFAULT, it is streaming index 1 by default
-        client = libssp.SspClient(camera_ip, 0x400000, 9999, libssp.STREAM_DEFAULT)
+        stream_style = libssp.STREAM_MAIN if stream_index == 0 else libssp.STREAM_DEFAULT
+        client = libssp.SspClient(camera_ip, 0x400000, 9999, stream_style)
         
         # Enable debug print
         client.set_debug_print(False)
@@ -181,11 +260,38 @@ if __name__ == "__main__":
     
     print("Please input z-cam camera IP (192.168.1.124):")
     
+    # get camera IP from user input
     camera_ip = input()
+    DEFAULT_CAMERA_IP = "192.168.1.84"
     if not camera_ip:
-        # print("No invalid camera IP, exit")
-        # sys.exit(1)
-        camera_ip = "192.168.1.84"
+        print(f"No invalid camera IP, use default IP {DEFAULT_CAMERA_IP}")
+        camera_ip = DEFAULT_CAMERA_IP
+    
+    # get stream index from user input
+    print("\nPlease select stream index:")
+    print("0. Stream0 (STREAM_MAIN)")
+    print("1. Stream1 (STREAM_DEFAULT)")
+    stream_index = int(input("Enter your choice (0 or 1): "))
+    
+    if stream_index != 0 and stream_index != 1:
+        print("Invalid choice, exit")
+        sys.exit(1)
+    
+    # query stream settings, if stream is not idle, exit
+    success, stream_info, error_msg = query_stream_settings(camera_ip, stream_index)
+    if not success:
+        print(f"Failed to query stream settings: {error_msg}")
+        sys.exit(1)
+    
+    input("\nPress Enter to continue...")
+    
+    # send stream index to camera, so SspClient can do streaming for specified stream
+    success, error_msg = sent_stream_index(camera_ip, stream_index)
+    if not success:
+        print(f"Failed to send stream index {stream_index}: {error_msg}")
+        sys.exit(1)
+    
+    input("\nPress Enter to continue...")
         
     # Create a thread to run ssp client
     client_thread = threading.Thread(target=run_client)
