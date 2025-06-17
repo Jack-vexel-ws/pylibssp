@@ -1,1 +1,8 @@
 include README.md
+include LICENSE
+
+# source packages need to include files (for sdist)
+include libssp/_libssp.cpp
+
+recursive-include include *
+recursive-include lib *

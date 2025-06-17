@@ -1,4 +1,4 @@
-from setuptools import setup, Extension, find_namespace_packages
+from setuptools import setup, Extension, find_namespace_packages, find_packages
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 import os
@@ -17,24 +17,25 @@ machine = platform.machine()
 # Get absolute path of current directory
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
+
 class CustomInstall(install):
     def run(self):
         install.run(self)
         
         # Copy dynamic library files to package root directory
         if system == 'Windows':
-            dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'win_x64_vs2017')
+            dll_dir = os.path.join(base_dir, 'lib', 'win_x64_vs2017')
             # libssp.dll is release version DLL file in win_x64_vs2017 directory
             dll_files = ['libssp.dll']
         elif system == 'Linux':
-            dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')
+            dll_dir = os.path.join(base_dir, 'lib', 'linux_x64')
             dll_files = ['libssp.so']
         elif system == 'Darwin':
             # use mac_arm64 for arm64 architecture
             if machine == 'arm64':
-                dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')
+                dll_dir = os.path.join(base_dir, 'lib', 'mac_arm64')
             else:
-                dll_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac')
+                dll_dir = os.path.join(base_dir, 'lib', 'mac')
             dll_files = ['libssp.dylib']
         else:
             raise ValueError(f"Unsupported system: {system}")
@@ -60,19 +61,19 @@ class BuildExt(build_ext):
         
         # determine library directory and extension based on platform
         if system == 'Windows':
-            lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'win_x64_vs2017')
+            lib_dir = os.path.join(base_dir, 'lib', 'win_x64_vs2017')
             lib_ext = '.dll'
             lib_files = ['libssp.dll']
         elif system == 'Linux':
-            lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')
+            lib_dir = os.path.join(base_dir, 'lib', 'linux_x64')
             lib_ext = '.so'
             lib_files = ['libssp.so']
         elif system == 'Darwin':
             # use mac_arm64 for arm64 architecture
             if machine == 'arm64':
-                lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')
+                lib_dir = os.path.join(base_dir, 'lib', 'mac_arm64')
             else:
-                lib_dir = os.path.join(base_dir, 'libssp', 'lib', 'mac')
+                lib_dir = os.path.join(base_dir, 'lib', 'mac')
             lib_ext = '.dylib'
             lib_files = ['libssp.dylib']
         else:
@@ -124,29 +125,29 @@ import pybind11
 
 # Set include directories
 include_dirs = [
-    os.path.join(base_dir, 'libssp', 'include'),
-    os.path.join(base_dir, 'libssp', 'include', 'imf'),
-    os.path.join(base_dir, 'libssp', 'include', 'libuv', 'include'),
+    os.path.join(base_dir, 'include'),
+    os.path.join(base_dir, 'include', 'imf'),
+    os.path.join(base_dir, 'include', 'libuv', 'include'),
     pybind11.get_include()
 ]
 
 # Set library directories and names
 if system == 'Windows':
-    library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'win_x64_vs2017')]
+    library_dirs = [os.path.join(base_dir, 'lib', 'win_x64_vs2017')]
     libraries = ['libssp']
     extra_compile_args = ['/EHsc', "/DPYBIND11_DETAILED_ERROR_MESSAGES"]
     extra_link_args = []
 elif system == 'Linux':
-    library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'linux_x64')]
+    library_dirs = [os.path.join(base_dir, 'lib', 'linux_x64')]
     libraries = ['libssp']
     extra_compile_args = ['-std=c++11']
     extra_link_args = []
 elif system == 'Darwin':
     # use mac_arm64 for arm64 architecture
     if machine == 'arm64':
-        library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'mac_arm64')]
+        library_dirs = [os.path.join(base_dir, 'lib', 'mac_arm64')]
     else:
-        library_dirs = [os.path.join(base_dir, 'libssp', 'lib', 'mac')]
+        library_dirs = [os.path.join(base_dir, 'lib', 'mac')]
     libraries = ['libssp']
     extra_compile_args = ['-std=c++11']
     extra_link_args = []
@@ -170,6 +171,7 @@ setup(
         "build_ext": BuildExt,
         "install": CustomInstall
     },
-    packages=find_namespace_packages(include=["libssp", "libssp.*"]),
-    include_package_data=True,
+    packages=['libssp'],
+    package_data={'libssp': ['libssp.dll', 'libssp.so', 'libssp.dylib']},
+    include_package_data=False,
 )
