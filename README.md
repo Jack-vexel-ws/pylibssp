@@ -16,8 +16,8 @@ pylibssp/
 │   ├── __init__.py
 │   ├── _libssp.cpp             ← pybind11 c++ extension implementation
 │   ├── sspclient.py            ← python wrapper
-│   ├── include/                ← libssp c++ headers，used for compiling
-│   └── lib/                    ← .lib/.a/.dll files，used for compiling
+├── include/                    ← libssp c++ headers，used for compiling
+├── lib/                        ← .lib/.a/.dll files，used for compiling
 ├── docs/ 
 │   ├── api.md                  ← python sspclient class api document
 ├── test/
