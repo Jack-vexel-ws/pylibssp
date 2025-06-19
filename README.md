@@ -15,14 +15,17 @@ pylibssp/
 ├── libssp/
 │   ├── __init__.py
 │   ├── _libssp.cpp             ← pybind11 c++ extension implementation
-│   ├── sspclient.py            ← python wrapper
+│   ├── sspclient.py            ← `SspClient` python wrapper
 ├── include/                    ← libssp c++ headers，used for compiling
 ├── lib/                        ← .lib/.a/.dll files，used for compiling
 ├── docs/ 
 │   ├── api.md                  ← python sspclient class api document
 ├── tests/
-│   ├── example.py              ← example code for demonstration
-├── pyproject.toml              ← configuration
+│   ├── dump_h26x.py            ← 'DumpH26x' class for dump video raw stream file
+│   ├── README_dumph26x.md      ← `dump_h26x.py` read me document
+│   ├── example.py              ← `SspClient` usage example 
+│   ├── README_example.md       ← `example.py` read me document
+├── pyproject.toml              ← project configuration
 ├── setup.cfg                   ← setup configuration
 ├── setup.py                    ← setup script     
 └── MANIFEST.in                 ← manifest file
@@ -67,10 +70,10 @@ If no any error occurs, you should be able to import 'libssp' in your python cod
 
 ### Test
 
-After building 'libssp' successfully, you can test it by running the example code in 'pylibssp/test' folder.
+After building 'libssp' successfully, you can test it by running the example code in 'pylibssp/tests' folder.
 
 ```shell
-cd pylibssp/test
+cd pylibssp/tests
 python example.py
 ```
 
@@ -97,7 +100,7 @@ pip install libssp
 ```
 In your python code, import 'libssp' and create your 'SspClient' instance.
 
-'SspClient' Python API is similar to 'libssp' c++ library, please refer to [API](https://github.com/Jack-vexel-ws/pylibssp/blob/main/docs/api.md) documents in 'pylibssp/docs' folder for more details.
+'SspClient' Python API is similar to 'libssp' c++ library, please refer to [SspClient API](./docs/api.md) documents in 'pylibssp/docs' folder for more details.
 
 Here is a code example:
 
@@ -140,6 +143,36 @@ http://192.168.1.100/ctrl/set?send_stream=Stream1
 http://192.168.1.100/ctrl/stream_setting?index=stream0&action=query
 ```
 if you want to setting camera or its streaming parameters, please refer to the ZCAM offical [HTTP API Document](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md)
+
+# Example
+`tests/example.py` show how to use `SspClient` to connect and streaming Z CAM camera, and how to dump camera raw video stream to files for playback.
+
+1. **Run the script**:
+    ```bash
+    python example.py
+    ```
+
+2. **Enter camera IP address**:
+   ```
+   Please input z-cam camera IP (default: 192.168.1.84):
+   ```
+
+3. **Select stream index**:
+    ```
+    Please select stream index:
+    0. Stream0 (STREAM_MAIN)
+    1. Stream1 (STREAM_DEFAULT)
+    Enter your choice (0 or 1):
+    ```
+
+4. **Choose recording option**:
+      ```
+      Do you want to dump H.264/H.265 stream data to file? (y/n):
+      ```
+
+5. **Dumping stream data to file**, default we dump raw video stream to `./dump` folder, you can change it in `example.py`:
+
+Please refer to [README_example](./tests/README_example.md) for more details.
 
 # License
 MIT License
