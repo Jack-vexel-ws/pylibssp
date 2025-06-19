@@ -8,10 +8,13 @@ import sys
 import threading
 import requests
 import json
+import os
 
 import libssp
+from dump_h26x import Dumph26x
 
 # Camera IP address
+DEFAULT_CAMERA_IP = "192.168.1.84"
 camera_ip = None
 stream_index = 1
 
@@ -24,6 +27,10 @@ last_pts = 0
 
 # Global event for stopping the client thread
 stop_event = threading.Event()
+
+# Global Dumph26x instance for saving H.264 data
+DUMP_FOLDER_NAME = "dump"
+h264_dump = None
 
 # query stream status and if it is not idle, return False
 def query_stream_settings(ip, stream_index):
@@ -82,10 +89,9 @@ def sent_stream_index(ip, stream_index):
         response.raise_for_status()
         
         result = response.json()
-        print(f"Response: {result}")
         
         if result.get('code') == 0:
-            print(f"{ip} Stream{stream_index} set successfully...")
+            print(f"{ip} Stream{stream_index} set successfully, response: {result}")
             return True, ""
         else:
             return False, f"Error code: {result.get('code')}, message: {result.get('msg')}"
@@ -136,7 +142,7 @@ def on_h264_data(data):
     """
     Callback function for processing H264 video data
     """
-    global last_pts, video_status
+    global last_pts, video_status, h264_dump
     
     # Calculate frame interval (ns)
     duration = 0
@@ -148,6 +154,10 @@ def on_h264_data(data):
     video_status = f"Video: frm_no = {data['frm_no']}, PTS={data['pts']}, interval={duration}ns, type={data['type']}, size={data['len']} bytes, NTP={data['ntp_timestamp']}"
     update_status()
     
+    # Write H.264 data to file using Dumph26x
+    if h264_dump and h264_dump.is_running:
+        h264_dump.write_frame(data['data'])
+
 def on_audio_data(data):
     """
     Callback function for processing audio data
@@ -200,6 +210,7 @@ def on_recv_buffer_full():
     print("\nReceive buffer is full")
 
 def run_client():
+    global h264_dump
     
     if camera_ip is None:
         print("\nNo invalid camera IP, exit")
@@ -212,6 +223,10 @@ def run_client():
     client = None
     
     try:
+        # dump h264 data to file using Dumph26x
+        if h264_dump is not None:
+            h264_dump.start()
+        
         # Start the client
         print(f"\nConnecting to camera {camera_ip}...")
         
@@ -253,16 +268,21 @@ def run_client():
             
             print(f"Set Client to None, release sspclient resources")
             client = None
+        
+        # Stop Dumph26x
+        if h264_dump:
+            print(f"Stopping H.26x dump...")
+            h264_dump.stop()
+            h264_dump = None
             
         print(f"run_client thread closed")
         
 if __name__ == "__main__":
-    
-    print("Please input z-cam camera IP (192.168.1.124):")
+
+    print(f"Please input z-cam camera IP (default: {DEFAULT_CAMERA_IP}):")
     
     # get camera IP from user input
     camera_ip = input()
-    DEFAULT_CAMERA_IP = "192.168.1.84"
     if not camera_ip:
         print(f"No invalid camera IP, use default IP {DEFAULT_CAMERA_IP}")
         camera_ip = DEFAULT_CAMERA_IP
@@ -280,10 +300,8 @@ if __name__ == "__main__":
     # query stream settings, if stream is not idle, exit
     success, stream_info, error_msg = query_stream_settings(camera_ip, stream_index)
     if not success:
-        print(f"Failed to query stream settings: {error_msg}")
+        print(f"Streaming Failed: {error_msg}")
         sys.exit(1)
-    
-    input("\nPress Enter to continue...")
     
     # send stream index to camera, so SspClient can do streaming for specified stream
     success, error_msg = sent_stream_index(camera_ip, stream_index)
@@ -291,8 +309,27 @@ if __name__ == "__main__":
         print(f"Failed to send stream index {stream_index}: {error_msg}")
         sys.exit(1)
     
-    input("\nPress Enter to continue...")
+    # get stream encoder type from streaming info
+    dump_encoder_type = stream_info.get('encoderType', 'N/A')
+    
+    # get user input to dump stream data to file or not
+    print(f"\nDo you want to dump {dump_encoder_type} stream data to file? (y/n):")
+    dump_h264 = input()
+    if dump_h264 == "y":
+        # dump stream data to file using Dumph26x
+        # file extension is the same as encoder type, so VLC can play it
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        dump_file_name = os.path.join(os.path.dirname(__file__), DUMP_FOLDER_NAME, f"camera_{camera_ip}_stream{stream_index}_{timestamp}.{dump_encoder_type}")
+        if not os.path.exists(os.path.dirname(dump_file_name)):
+            os.makedirs(os.path.dirname(dump_file_name))   
+        if os.path.exists(dump_file_name):
+            os.remove(dump_file_name)
         
+        h264_dump = Dumph26x(dump_file_name)
+        print(f"\nDumping {dump_encoder_type} data to file: {dump_file_name}")
+    else:
+        h264_dump = None
+
     # Create a thread to run ssp client
     client_thread = threading.Thread(target=run_client)
     client_thread.daemon = True
