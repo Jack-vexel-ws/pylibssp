@@ -20,7 +20,7 @@ pylibssp/
 ├── lib/                        ← .lib/.a/.dll files，used for compiling
 ├── docs/ 
 │   ├── api.md                  ← python sspclient class api document
-├── test/
+├── tests/
 │   ├── example.py              ← example code for demonstration
 ├── pyproject.toml              ← configuration
 ├── setup.cfg                   ← setup configuration
