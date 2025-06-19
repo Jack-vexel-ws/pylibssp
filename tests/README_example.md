@@ -42,10 +42,10 @@
 
 ## Key Functions
 
-### Stream Management
+### Stream Settings
 
 - `query_stream_settings(ip, stream_index)`: Query camera stream settings
-- `sent_stream_index(ip, stream_index)`: Send stream selection command
+- `sent_stream_index(ip, stream_index)`: Send stream selection command to camera
 
 ### Callback Functions
 
@@ -67,7 +67,7 @@
 ### Recording Options
 
 When recording is enabled:
-- Files saved to `tests/dump/` directory
+- Files saved to `tests/dump/` directory as default
 - Filename: `camera_{IP}_stream{INDEX}_{TIMESTAMP}.{CODEC}`
 - Supported: H.264, H.265
 
@@ -79,19 +79,22 @@ When recording is enabled:
 
 ## Output Files
 
+
+
 ### Recorded Streams
-- **Location**: example use `tests/dump/` as default, you can change it by entering your own directory
+- **[`Dumph26x`](tests/dump_h26x.py)**: class for recording H.264/H.265 streams to raw video files, please refer to **[README_dumph26x](tests/README_dumph26x.py)** for more details
+- **Location**: example use `tests/dump/` as default dump directory, you can change `DUMP_FOLDER_NAME` to your wanted directory in `example.py`
 - **Format**: Raw H.264/H.265 video stream
-- **Playback**: VLC can play raw video stream files
+- **Playback**: VLC can play raw video stream files directly
 
 ### Example filenames
 ```
 camera_192.168.1.84_stream1_20231201_143022.h264
 camera_192.168.1.84_stream0_20231201_143022.h265
 ```
-### Convert to MP4
+### **Convert to MP4**
 
-To convert the raw H.264/H.265 files to MP4 format, you can use the following `ffmpeg` command:
+To convert the raw H.264/H.265 files to MP4 format, you can use the following **`ffmpeg`** command:
 
 ```bash
 ffmpeg -i -r 30000/1001 source_file.h264 -c copy dest_file.mp4
@@ -124,6 +127,6 @@ dump.start()
 
 ## Common Issues
 
-1. **Camera not found**: Check network connectivity and IP address, camera should be in same LAN with your computer
-2. **Stream not available**: Verify stream is idle and index selection, if stream is in use, try another stream
-3. **Recording fails**: Check disk space and write permissions 
+1. **Camera not found**: Check network connectivity and IP address, please make sure camera be in same LocalLAN with your computer
+2. **Stream not available**: Verify your selected stream(0 or 1) is **`idle`** , if selected stream is in use, streaming will failed
+3. **Stream Settings**: Please use Z CAM offical **[HTTP API command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md)** to config your `stream1` settings - resolution, gop, bitrate, encoder, etc. `stream0` basic settings is same with your camera shoot format.
