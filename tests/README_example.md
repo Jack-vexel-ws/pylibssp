@@ -79,10 +79,8 @@ When recording is enabled:
 
 ## Output Files
 
-
-
 ### Recorded Streams
-- **[`Dumph26x`](tests/dump_h26x.py)**: class for recording H.264/H.265 streams to raw video files, please refer to **[README_dumph26x](tests/README_dumph26x.py)** for more details
+- **[`Dumph26x`](./dump_h26x.py)**: class for recording H.264/H.265 streams to raw video files, please refer to **[README_dumph26x](./README_dumph26x.md)** for more details
 - **Location**: example use `tests/dump/` as default dump directory, you can change `DUMP_FOLDER_NAME` to your wanted directory in `example.py`
 - **Format**: Raw H.264/H.265 video stream
 - **Playback**: VLC can play raw video stream files directly
