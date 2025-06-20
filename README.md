@@ -151,6 +151,8 @@ if you want to setting camera or its streaming parameters, please refer to the Z
 # Example
 `example/example.py` is a full example code to show how to connect to zcam camera, start/stop streaming, record video raw stream data to file and real-time decodeing and real-time preview streaming video.
 
+![GUI Interface Screenshot](./docs/assets/example_ui.png)
+
 >Please refer to the `example.py` code and [README_example.md](./example/README_example.md) document to understand example more details.
 
 ## Example Dependencies
