@@ -1,7 +1,6 @@
 """
 Test script demonstrating how to import the pyssp library
 """
-
 import libssp
 
 # default camera ip address, you could change it to your camera ip address
