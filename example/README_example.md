@@ -31,7 +31,7 @@
    - **Connect**: Click the green "Connect" button to start streaming
    - **Video Preview**: Real-time video display in the preview area
 
-   ![GUI Interface Screenshot](../docs/assets/example_ui.png)
+   <img src="../docs/assets/example_ui.png" alt="GUI Interface Screenshot" width="540" style="max-width: 100%; height: auto;border: 1px solid #000; border-radius: 4px; margin: 10px 0;">
 
    
 ### Command-line Mode
