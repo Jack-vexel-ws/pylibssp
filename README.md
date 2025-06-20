@@ -20,11 +20,13 @@ pylibssp/
 ├── lib/                        ← .lib/.a/.dll files，used for compiling
 ├── docs/ 
 │   ├── api.md                  ← python sspclient class api document
-├── tests/
+├── example/
 │   ├── dump_h26x.py            ← 'DumpH26x' class for dump video raw stream file
 │   ├── README_dumph26x.md      ← `dump_h26x.py` read me document
 │   ├── example.py              ← `SspClient` usage example 
 │   ├── README_example.md       ← `example.py` read me document
+├── tests/
+│   ├── test_import.py          ← test script to check if `SspClient` can be imported
 ├── pyproject.toml              ← project configuration
 ├── setup.cfg                   ← setup configuration
 ├── setup.py                    ← setup script     
@@ -70,14 +72,16 @@ If no any error occurs, you should be able to import 'libssp' in your python cod
 
 ### Test
 
-After building 'libssp' successfully, you can test it by running the example code in 'pylibssp/tests' folder.
+After building `libssp` successfully, you can test it by running the test code in 'pylibssp/tests' folder.
 
 ```shell
 cd pylibssp/tests
-python example.py
+python test_import.py
 ```
 
-according to prompt to input your camera IP and select stream index, then streaming should start. You will see the video and audio meta data and streaming data from the callback functions. 'Example.py' print these data to console.
+`test_import.py` try to import `libssp` and create a `libssp.SspClient` instance to start streaming. You will see the video and audio meta data and streaming data from the callback functions. `test_import.py` print these data to console.
+
+>Please make sure your camera IP address and change it in `test_import.py`before running the test code.
 
 ### Rebuild or clean
 
@@ -92,15 +96,15 @@ pip install . --no-build-isolation -v
 
 # Usage
 
-If you did not want to build from source code, you can install 'libssp' by pip directly.
+If you did not want to build from source code, you can install `libssp` by pip directly.
 
 Open a command prompt in windows and run
 ```shell
 pip install libssp
 ```
-In your python code, import 'libssp' and create your 'SspClient' instance.
+In your python code, import `libssp` and create your `SspClient` instance.
 
-'SspClient' Python API is similar to 'libssp' c++ library, please refer to [SspClient API](./docs/api.md) documents in 'pylibssp/docs' folder for more details.
+`SspClient` Python API is similar to `libssp` c++ library, please refer to [SspClient API](./docs/api.md) documents in 'pylibssp/docs' folder for more details.
 
 Here is a code example:
 
@@ -124,55 +128,57 @@ client.is_hlg = False
 # Start client
 client.start()
 
-... do something
+# ... do something
 
 # Stop client
 client.stop()
 ```
 **NOTE**
-> If you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is 'idle'. In Example.py, there is sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
+> If you want to streaming zcam camera, you must set the stream index 0 or 1 and to be sure its streaming status is `idle`. In `example\example.py`, there are sample code to show how to set the stream index and how to sure the streaming status is 'Idle'.
 
 [set the stream index (0 or 1) http command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md#Network-streaming)
 ```
-http://192.168.1.100/ctrl/set?send_stream=Stream0
+http://192.168.1.84/ctrl/set?send_stream=Stream0
 or
-http://192.168.1.100/ctrl/set?send_stream=Stream1
+http://192.168.1.84/ctrl/set?send_stream=Stream1
 ```
 [query the streaming status http command](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md#Network-streaming)
 ```
-http://192.168.1.100/ctrl/stream_setting?index=stream0&action=query
+http://192.168.1.84/ctrl/stream_setting?index=stream0&action=query
 ```
 if you want to setting camera or its streaming parameters, please refer to the ZCAM offical [HTTP API Document](https://github.com/imaginevision/Z-Camera-Doc/blob/master/E2/protocol/http/http.md)
 
 # Example
-`tests/example.py` show how to use `SspClient` to connect and streaming Z CAM camera, and how to dump camera raw video stream to files for playback.
+`example/example.py` is a full example code to show how to connect to zcam camera, start/stop streaming, record video raw stream data to file and real-time decodeing and real-time preview streaming video.
 
-1. **Run the script**:
-    ```bash
-    python example.py
-    ```
+>Please refer to the `example.py` code and [README_example.md](./example/README_example.md) document to understand example more details.
 
-2. **Enter camera IP address**:
-   ```
-   Please input z-cam camera IP (default: 192.168.1.84):
-   ```
+## Example Dependencies
+- `libssp`: Z CAM camera streaming python wrapper library
+- `PySide6`: Qt GUI framework
+- `av`: Video decoding (for preview)
+- `numpy`: Array operations
+- `requests`: HTTP API communication
 
-3. **Select stream index**:
-    ```
-    Please select stream index:
-    0. Stream0 (STREAM_MAIN)
-    1. Stream1 (STREAM_DEFAULT)
-    Enter your choice (0 or 1):
-    ```
+Before running the example, please make sure you have installed all the dependencies. You can install them using pip:
 
-4. **Choose recording option**:
-      ```
-      Do you want to dump H.264/H.265 stream data to file? (y/n):
-      ```
+```bash
+pip install libssp PySide6 av numpy requests
+```
 
-5. **Dumping stream data to file**, default we dump raw video stream to `./dump` folder, you can change it in `example.py`:
+**Run example**:
 
-Please refer to [README_example](./tests/README_example.md) for more details.
+  ```bash
+  cd example
+
+  # run example with Qt gui (recommended)
+  python example.py -gui
+
+  #or
+
+  # run example with cli (if you like command line)
+  python example.py -cli
+  ```
 
 # License
 MIT License
