@@ -22,9 +22,12 @@ pylibssp/
 │   ├── api.md                  ← python sspclient class api document
 ├── example/
 │   ├── dump_h26x.py            ← 'DumpH26x' class for dump video raw stream file
-│   ├── README_dumph26x.md      ← `dump_h26x.py` read me document
-│   ├── example.py              ← `SspClient` usage example 
-│   ├── README_example.md       ← `example.py` read me document
+│   ├── preview.py              ← 'PreviewH26xWnd' class for preview video raw stream file
+│   ├── README.md               ← example read me document
+│   ├── example.py              ← example source code
+│   ├── example.spec            ← example.py build config file
+│   ├── requirements.txt        ← example.py dependencies
+│   ├── build_example_exe.py    ← build example windows exe scripts
 ├── tests/
 │   ├── test_import.py          ← test script to check if `SspClient` can be imported
 ├── pyproject.toml              ← project configuration
