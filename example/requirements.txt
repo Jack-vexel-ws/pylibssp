@@ -1,0 +1,19 @@
+# Dependencies for example.py - Z CAM Camera Streaming Example
+
+# Core streaming library
+libssp>=0.1.0
+
+# GUI framework
+PySide6>=6.0.0
+
+# Video decoding for preview
+av>=10.0.0
+
+# HTTP requests for camera API
+requests>=2.25.0
+
+# Array operations (used by av package)
+numpy>=1.19.0
+
+# Optional: For packaging into executable
+pyinstaller>=5.0.0 

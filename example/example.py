@@ -9,6 +9,9 @@ import threading
 import requests
 import json
 import os
+import traceback
+import logging
+from datetime import datetime
 
 import libssp
 from dump_h26x import Dumph26x
@@ -19,15 +22,34 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, Q
 from PySide6.QtCore import Qt, QMetaObject, Q_ARG
 from PySide6.QtGui import QPalette, QColor
 
+# example version
+__version__ = "0.1.1"
 
-# default camera ip address, you could change it to your camera ip address
+# ============================================================================
+# Print Redirection Control Switch
+# Set to True to redirect all print outputs to log files (for packaging exe)
+# Set to False for normal print output to console (for development/debugging)
+
+# For development, set to False
+# For packaging, set to True
+
+ENABLE_PRINT_REDIRECT = True  
+
+# Print redirector instance
+print_redirector = None
+
+# ============================================================================
+
+
+
+# Default camera IP address, you could change it to your camera IP address
 DEFAULT_CAMERA_IP = "192.168.1.84"
 
 # Camera IP address
 camera_ip = None
 stream_index = 1
 
-# Status line for video and audio
+# Status line for video and audio, it will be updated by on_h264_data and on_audio_data
 video_status = ""
 audio_status = ""
 
@@ -43,6 +65,77 @@ h264_dump = None
 
 # Global preview widget instance
 preview_widget = None
+
+# Get data subfolder for creating subdirectories, for example, "./logs" "./dump"
+def get_data_subfolder():
+    """Get base directory for creating subdirectories"""
+    if getattr(sys, 'frozen', False):
+        # Packaged exe environment
+        return os.path.dirname(sys.executable)
+    else:
+        # IDE development environment
+        return os.path.dirname(os.path.abspath(__file__))
+
+def setup_print_redirect():
+    """Setup print redirection to log files"""
+    if not ENABLE_PRINT_REDIRECT:
+        return None
+    
+    # Get program running directory
+    # In IDE: logs directory is under project root
+    # In packaged exe: logs directory is under exe file directory
+    base_dir = get_data_subfolder()
+    print(f"Running in environment, base_dir: {base_dir}")
+    
+    # Create logs directory
+    log_dir = os.path.join(base_dir, "logs")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+        print(f"Created logs directory: {log_dir}")
+    
+    # Generate log file name (with timestamp)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(log_dir, f"print_output_{timestamp}.log")
+    
+    # Configure log format
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - PRINT - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file, encoding='utf-8'),
+        ]
+    )
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Print redirector initialized. Log file: {log_file}")
+    
+    # Print redirection
+    class PrintRedirector:
+        def __init__(self, logger):
+            self.logger = logger
+            self.original_stdout = sys.stdout
+        
+        def write(self, text):
+            if text.strip():  # Ignore empty lines
+                self.logger.info(text.rstrip())
+        
+        def flush(self):
+            pass
+        
+        def restore(self):
+            """Restore original output"""
+            if self.original_stdout:
+                sys.stdout = self.original_stdout
+    
+    redirector = PrintRedirector(logger)
+    sys.stdout = redirector
+    
+    return redirector
+
+# Start print redirection (if enabled)
+if ENABLE_PRINT_REDIRECT:
+    print_redirector = setup_print_redirect()
+    print("Print redirector started successfully")
 
 # query stream status and if it is not idle, return False
 def query_stream_settings(ip, stream_index):
@@ -141,6 +234,11 @@ def update_status():
     """
     Update and print the status line
     """
+    
+    # if print redirect is enabled, do not print to console
+    if ENABLE_PRINT_REDIRECT:
+        return
+    
     # Move cursor up two lines
     sys.stdout.write('\033[2A')
     # Clear the two lines
@@ -306,7 +404,7 @@ def run_client():
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Z CAM Camera Streaming Example")
+        self.setWindowTitle(f"ZCAM Camera Streaming Example(v{__version__})")
         self.resize(1280, 720)
         
         # Create central widget
@@ -462,7 +560,7 @@ class MainWindow(QMainWindow):
             # dump stream data to file using Dumph26x
             # file extension is the same as encoder type, so VLC can play it
             timestamp = time.strftime("%Y%m%d_%H%M%S")
-            dump_file_name = os.path.join(os.path.dirname(__file__), DUMP_FOLDER_NAME, f"camera_{camera_ip}_stream{stream_index}_{timestamp}.{dump_encoder_type}")
+            dump_file_name = os.path.join(get_data_subfolder(), DUMP_FOLDER_NAME, f"camera_{camera_ip}_stream{stream_index}_{timestamp}.{dump_encoder_type}")
             
             if not os.path.exists(os.path.dirname(dump_file_name)):
                 os.makedirs(os.path.dirname(dump_file_name))
@@ -639,7 +737,7 @@ def run_main_cli():
         # dump stream data to file using Dumph26x
         # file extension is the same as encoder type, so VLC can play it
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        dump_file_name = os.path.join(os.path.dirname(__file__), DUMP_FOLDER_NAME, f"camera_{camera_ip}_stream{stream_index}_{timestamp}.{dump_encoder_type}")
+        dump_file_name = os.path.join(get_data_subfolder(), DUMP_FOLDER_NAME, f"camera_{camera_ip}_stream{stream_index}_{timestamp}.{dump_encoder_type}")
         if not os.path.exists(os.path.dirname(dump_file_name)):
             os.makedirs(os.path.dirname(dump_file_name))   
         if os.path.exists(dump_file_name):
