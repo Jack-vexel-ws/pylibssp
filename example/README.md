@@ -4,6 +4,10 @@
 
 This is a complete Z CAM camera streaming client example that demonstrates how to use the `pylibssp` library to connect to Z CAM cameras and receive real-time video and audio streams. The example provides both graphical interface and command-line interfaces, supporting real-time video preview, optional file recording, and other features.
 
+
+You can download the example executable for Windows from the [releases page](https://github.com/Jack-vexel-ws/pylibssp/releases).
+
+
 ## Key Features
 
 - **Dual Interface Support**: Qt GUI and command-line interfaces
