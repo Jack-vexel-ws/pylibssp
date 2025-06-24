@@ -23,7 +23,7 @@ from PySide6.QtCore import Qt, QMetaObject, Q_ARG, Signal
 from PySide6.QtGui import QPalette, QColor
 
 # example version
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 # ============================================================================
 # Print Redirection Control Switch
