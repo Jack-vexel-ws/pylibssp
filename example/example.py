@@ -19,7 +19,7 @@ from preview import PreviewH26xWnd
 
 # Qt imports for GUI
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QRadioButton, QButtonGroup, QCheckBox
-from PySide6.QtCore import Qt, QMetaObject, Q_ARG
+from PySide6.QtCore import Qt, QMetaObject, Q_ARG, Signal
 from PySide6.QtGui import QPalette, QColor
 
 # example version
@@ -65,6 +65,12 @@ h264_dump = None
 
 # Global preview widget instance
 preview_widget = None
+
+# Global encoder type for preview
+encoder_type = "h264"  # Default to H.264
+
+# Global reference to main window for callbacks
+main_window = None
 
 # Get data subfolder for creating subdirectories, for example, "./logs" "./dump"
 def get_data_subfolder():
@@ -269,7 +275,7 @@ def on_h264_data(data):
         h264_dump.write_frame(data['data'])
 
     # Send frame to preview widget
-    if preview_widget:
+    if preview_widget and not stop_event.is_set():
         preview_widget.push_frame(data['type'], data['data'])
 
 def on_audio_data(data):
@@ -290,6 +296,11 @@ def on_meta(video_meta, audio_meta, meta):
     print(f"  Video: gop = {video_meta['gop']}, encoder = {get_video_encoder_name(video_meta['encoder'])}")
     print(f"  Audio: sample rate={audio_meta['sample_rate']}Hz, channel={audio_meta['channel']}")
     print(f"  Audio: bits per sample={8 * audio_meta['sample_size']/audio_meta['unit']} bits, encoder = {get_audio_encoder_name(audio_meta['encoder'])}, bitrate = {audio_meta['bitrate']}")
+    
+    # Set resolution in preview overlay
+    if preview_widget and preview_widget.overlay:
+        preview_widget.overlay.set_metadata(video_meta['width'], video_meta['height'], video_meta['timescale']/video_meta['unit'], get_video_encoder_name(video_meta['encoder']))
+    
     # Add two empty lines for status display
     print("\n\n")
 
@@ -302,7 +313,7 @@ def on_disconnected():
     # Set the stop event to break run_client thread
     print("\nrun_client thread will be closed by stop_event")
     stop_event.set()
-    
+
 def on_connected():
     """
     Callback function for connection establishment
@@ -324,7 +335,7 @@ def on_recv_buffer_full():
     print("\nReceive buffer is full")
 
 def run_client():
-    global h264_dump, preview_widget
+    global h264_dump, preview_widget, encoder_type
     
     if camera_ip is None:
         print("\nNo invalid camera IP, exit")
@@ -341,9 +352,10 @@ def run_client():
         if h264_dump is not None:
             h264_dump.start()
         
-        # Start preview widget
+        # Start preview widget with correct encoder type
         if preview_widget:
-            preview_widget.start()
+            print(f"Starting preview with encoder type: {encoder_type}")
+            preview_widget.start(encoder_type)
         
         # Start the client
         print(f"\nConnecting to camera {camera_ip}...")
@@ -400,8 +412,15 @@ def run_client():
             
         print(f"run_client thread closed")
         
+        # Emit UI state signal when thread ends (always disconnected state)
+        if main_window:
+            main_window.ui_state_changed.emit(False)
+
 # GUI main window class
 class MainWindow(QMainWindow):
+    # Signal for updating UI state
+    ui_state_changed = Signal(bool)  # True for connected, False for disconnected
+    
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"ZCAM Camera Streaming Example(v{__version__})")
@@ -517,12 +536,31 @@ class MainWindow(QMainWindow):
         # Initialize client thread
         self.client_thread = None
         
+        # Connect UI state signal to slot
+        self.ui_state_changed.connect(self._update_ui_state)
+        
+    def _update_ui_state(self, connected):
+        """
+        Update UI state based on connection status (called by signal)
+        
+        Args:
+            connected (bool): True if connected, False if disconnected
+        """
+        # Update button style
+        self._update_connect_button_style(connected)
+        
+        # Update control states
+        self.ip_input.setEnabled(not connected)
+        self.stream0_radio.setEnabled(not connected)
+        self.stream1_radio.setEnabled(not connected)
+        self.record_checkbox.setEnabled(not connected)
+        
     def _connect_camera(self):
         """
         Connect to camera
         """
         # Start connection
-        global camera_ip, stream_index, h264_dump
+        global camera_ip, stream_index, h264_dump, encoder_type
         
         # Get camera IP
         camera_ip = self.ip_input.text()
@@ -554,6 +592,9 @@ class MainWindow(QMainWindow):
         # get stream encoder type from streaming info
         dump_encoder_type = stream_info.get('encoderType', 'N/A')
         
+        # Store encoder type globally for preview
+        encoder_type = dump_encoder_type.lower()
+        
         # Check recording option
         record_option = self.record_checkbox.isChecked()
         if record_option:
@@ -578,12 +619,8 @@ class MainWindow(QMainWindow):
         self.client_thread.daemon = True
         self.client_thread.start()
         
-        # Update UI
-        self._update_connect_button_style(True)
-        self.ip_input.setEnabled(False)
-        self.stream0_radio.setEnabled(False)
-        self.stream1_radio.setEnabled(False)
-        self.record_checkbox.setEnabled(False)
+        # Emit signal to update UI state
+        self.ui_state_changed.emit(True)
             
     def _disconnect_camera(self):
         """
@@ -593,13 +630,6 @@ class MainWindow(QMainWindow):
         
         if self.client_thread and self.client_thread.is_alive():
             self.client_thread.join(timeout=10)
-        
-        # Update UI
-        self._update_connect_button_style(False)
-        self.ip_input.setEnabled(True)
-        self.stream0_radio.setEnabled(True)
-        self.stream1_radio.setEnabled(True)
-        self.record_checkbox.setEnabled(True)
         
     def toggle_connection(self):
         if self.connect_btn.text() == "Connect":
@@ -616,13 +646,6 @@ class MainWindow(QMainWindow):
         
         if self.client_thread and self.client_thread.is_alive():
             self.client_thread.join(timeout=10)
-        
-        # Update UI
-        self._update_connect_button_style(False)
-        self.ip_input.setEnabled(True)
-        self.stream0_radio.setEnabled(True)
-        self.stream1_radio.setEnabled(True)
-        self.record_checkbox.setEnabled(True)
         
         event.accept()
 
@@ -680,23 +703,25 @@ class MainWindow(QMainWindow):
 
 # run example with Qt GUI window           
 def run_main_gui():
+    global main_window
+    
     # Create Qt application
     app = QApplication(sys.argv)
     
     # Create main window
-    window = MainWindow()
-    window.show()
+    main_window = MainWindow()
+    main_window.show()
     
     # Run application
     try:
         sys.exit(app.exec())
     except KeyboardInterrupt:
         print("Received Ctrl+C, stopping...")
-        stop_event.set() 
+        stop_event.set()
         
 # run example with command line
 def run_main_cli():
-    global camera_ip, stream_index, h264_dump
+    global camera_ip, stream_index, h264_dump, encoder_type
     print(f"Please input z-cam camera IP (default: {DEFAULT_CAMERA_IP}):")
     
     # get camera IP from user input
@@ -729,6 +754,9 @@ def run_main_cli():
     
     # get stream encoder type from streaming info
     dump_encoder_type = stream_info.get('encoderType', 'N/A')
+    
+    # Store encoder type globally for preview
+    encoder_type = dump_encoder_type.lower()
     
     # get user input to dump stream data to file or not
     print(f"\nDo you want to dump {dump_encoder_type} stream data to file? (y/n):")
