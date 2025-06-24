@@ -156,7 +156,7 @@ if you want to setting camera or its streaming parameters, please refer to the Z
 
 <img src="./docs/assets/example_ui.png" alt="GUI Interface Screenshot" width="540" style="max-width: 100%; height: auto;border: 1px solid #000; border-radius: 4px; margin: 10px 0;">
 
->Please refer to the `example.py` code and [README_example.md](./example/README_example.md) document to understand example more details.
+>Please refer to the [`example.py`](./example/example.py) code and example [README](./example/README.md) to understand example more details.
 
 ## Example Dependencies
 - `libssp`: Z CAM camera streaming python wrapper library
@@ -168,7 +168,8 @@ if you want to setting camera or its streaming parameters, please refer to the Z
 Before running the example, please make sure you have installed all the dependencies. You can install them using pip:
 
 ```bash
-pip install libssp PySide6 av numpy requests
+cd example
+pip install -r requirements.txt
 ```
 
 **Run example**:
