@@ -25,7 +25,7 @@ class Dumph26x:
             file_path (str): Path to the output .h264 file
         """
         self.file_path = file_path
-        self.frame_queue = queue.Queue()
+        self.frame_queue = queue.Queue()  # Thread-safe by default
         self.stop_event = threading.Event()
         self.dump_thread = None
         self.file_handle = None
@@ -86,7 +86,6 @@ class Dumph26x:
             # Open the file for writing
             self.file_handle = open(self.file_path, 'wb')
             print(f"Opened H.264/H.265 file for writing: {self.file_path}")
-            print("\n")
             
             frames_written = 0
             
@@ -102,7 +101,7 @@ class Dumph26x:
                     
                     # Print progress every 100 frames
                     if frames_written % 100 == 0:
-                        print(f"\nDumph26x: Written {frames_written} frames")
+                        print(f"Dumph26x: Written {frames_written} frames")
                         
                 except queue.Empty:
                     # No data in queue, continue waiting
