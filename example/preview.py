@@ -45,7 +45,7 @@ class DecodeH26x(QObject):
     def _init_codec(self, encoder_type):
         """Initialize H.264/H.265 decoder, prefer hardware decoder if available."""
 
-        # 硬件解码器优先尝试的列表
+        # List of hardware decoders to try first
         hw_decoder_map = {
             'h264': ['h264_cuvid', 'h264_qsv', 'h264_dxva2', 'h264_d3d11va', 'h264_vaapi', 'h264_v4l2m2m'],
             'hevc': ['hevc_cuvid', 'hevc_qsv', 'hevc_dxva2', 'hevc_d3d11va', 'hevc_vaapi', 'hevc_v4l2m2m']
@@ -60,7 +60,7 @@ class DecodeH26x(QObject):
             print(f"Unknown encoder type '{encoder_type}', using H.264 as default")
             codec_key = 'h264'
 
-        # 尝试硬件解码器
+        # Try hardware decoders
         hw_decoders = hw_decoder_map[codec_key]
         codec_created = False
 
@@ -78,13 +78,13 @@ class DecodeH26x(QObject):
                 print(f"⚠ Unexpected error with {codec_name}: {e}")
                 continue
 
-        # 如果硬件解码器都失败，回退到软件解码器
+        # If all hardware decoders fail, fall back to software decoder
         if not codec_created:
             try:
                 sw_codec_name = codec_key
                 self.codec = av.CodecContext.create(sw_codec_name, 'r')
 
-                # 软件解码器配置线程等参数
+                # Configure software decoder parameters like threads
                 self.codec.options.update({
                     'threads': '1',
                     'thread_type': 'slice'
@@ -187,26 +187,26 @@ class DecodeH26x(QObject):
 class OverlayLabel(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)  # 鼠标事件穿透
-        self.setAttribute(Qt.WA_TranslucentBackground)  # 设置背景透明
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)  # Mouse events pass through
+        self.setAttribute(Qt.WA_TranslucentBackground)  # Set transparent background
         self.video_meta = ""
         self.fps = 0
         self.smoothed_fps = 0
-        self.frame_times = []  # 用于计算帧率
+        self.frame_times = []  # For calculating frame rate
         self.bitrate = 0
         self.smoothed_bitrate = 0
-        self.data_times = []  # 用于计算码率
-        self.data_sizes = []  # 用于计算码率
-        self.alpha = 0.1  # 平滑因子 (0-1)，越小越平滑
-        self.setStyleSheet("QLabel { background-color: transparent; color: white; }")  # 设置背景透明，文字颜色为白色
+        self.data_times = []  # For calculating bitrate
+        self.data_sizes = []  # For calculating bitrate
+        self.alpha = 0.1  # Smoothing factor (0-1), smaller means smoother
+        self.setStyleSheet("QLabel { background-color: transparent; color: white; }")  # Set transparent background, white text color
 
     def set_metadata(self, width, height, frame_rate, encoder_name):
-        # 智能格式化帧率
+        # Smart frame rate formatting
         if frame_rate == int(frame_rate):
-            # 整数帧率，显示为整数
+            # Integer frame rate, display as integer
             fps_str = f"{int(frame_rate)}fps"
         else:
-            # 浮点帧率，显示最多2位小数
+            # Float frame rate, display up to 2 decimal places
             fps_str = f"{frame_rate:.2f}fps"
         
         self.video_meta = f"{width}x{height}@{fps_str}, {encoder_name}"
@@ -216,14 +216,14 @@ class OverlayLabel(QLabel):
         current_time = time.time()
         self.frame_times.append(current_time)
         
-        # 只保留最近5秒的帧时间
+        # Only keep frame times from the last 5 seconds
         while self.frame_times and current_time - self.frame_times[0] > 5.0:
             self.frame_times.pop(0)
         
-        # 计算帧率
+        # Calculate frame rate
         if len(self.frame_times) > 1:
-            # 计算实际的时间间隔
-            time_duration = self.frame_times[-1] - self.frame_times[0]  # 最后一个时间减去第一个时间
+            # Calculate actual time interval
+            time_duration = self.frame_times[-1] - self.frame_times[0]  # Last time minus first time
             frame_count = len(self.frame_times)
             
             if time_duration > 0:
@@ -233,7 +233,7 @@ class OverlayLabel(QLabel):
         else:
             self.fps = 0
         
-        # 使用指数平滑
+        # Use exponential smoothing
         if self.smoothed_fps == 0:
             self.smoothed_fps = self.fps
         else:
@@ -246,25 +246,25 @@ class OverlayLabel(QLabel):
         self.data_times.append(current_time)
         self.data_sizes.append(data_size)
         
-        # 只保留最近5秒的数据
+        # Only keep data from the last 5 seconds
         while self.data_times and current_time - self.data_times[0] > 5.0:
             self.data_times.pop(0)
             self.data_sizes.pop(0)
         
-        # 计算码率（bits per second）
+        # Calculate bitrate (bits per second)
         if len(self.data_times) > 1:
-            # 计算实际的时间间隔
-            time_duration = self.data_times[-1] - self.data_times[0]  # 最后一个时间减去第一个时间
-            total_bits = sum(self.data_sizes) * 8  # 转换为bits
+            # Calculate actual time interval
+            time_duration = self.data_times[-1] - self.data_times[0]  # Last time minus first time
+            total_bits = sum(self.data_sizes) * 8  # Convert to bits
             
             if time_duration > 0:
-                self.bitrate = total_bits / time_duration / 1000000  # 转换为Mbps
+                self.bitrate = total_bits / time_duration / 1000000  # Convert to Mbps
             else:
                 self.bitrate = 0
         else:
             self.bitrate = 0
         
-        # 使用指数平滑
+        # Use exponential smoothing
         if self.smoothed_bitrate == 0:
             self.smoothed_bitrate = self.bitrate
         else:
@@ -287,45 +287,45 @@ class OverlayLabel(QLabel):
             painter.fillRect(self.rect(), Qt.transparent)
             return
         
-        # 不调用父类的paintEvent，完全自定义绘制
+        # Don't call parent's paintEvent, completely custom drawing
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # 设置字体
+        # Set font
         font = QFont("Arial", 10)
         painter.setFont(font)
         
-        # 计算文本
+        # Calculate text
         meta_text = f"{self.video_meta}"
         
-        # 智能格式化帧率
+        # Smart frame rate formatting
         if self.smoothed_fps == int(self.smoothed_fps):
-            # 整数帧率，显示为整数
+            # Integer frame rate, display as integer
             fps_str = f"{int(self.smoothed_fps)}p"
         else:
-            # 浮点帧率，显示最多2位小数
+            # Float frame rate, display up to 2 decimal places
             fps_str = f"{self.smoothed_fps:.2f}p"
         
         real_fps_text = f"{fps_str}, {self.format_bitrate()}"
         
-        # 计算文本位置（右上角）
+        # Calculate text position (top right corner)
         margin = 6
         
-        # 绘制阴影
-        painter.setPen(QColor(0, 0, 0, 180))  # 半透明黑色阴影
-        # 绘制IP地址阴影
+        # Draw shadow
+        painter.setPen(QColor(0, 0, 0, 180))  # Semi-transparent black shadow
+        # Draw IP address shadow
         painter.drawText(self.width() - margin - painter.fontMetrics().horizontalAdvance(meta_text) + 1, 
-                        margin + 16 + 1, meta_text)  # 阴影偏移2像素
-        # 绘制分辨率信息阴影
+                        margin + 16 + 1, meta_text)  # Shadow offset 2 pixels
+        # Draw resolution info shadow
         painter.drawText(self.width() - margin - painter.fontMetrics().horizontalAdvance(real_fps_text) + 1, 
-                        margin + 32 + 1, real_fps_text)  # 阴影偏移2像素
+                        margin + 32 + 1, real_fps_text)  # Shadow offset 2 pixels
         
-        # 绘制主文本
-        painter.setPen(QColor(255, 255, 255, 255))  # 白色主文本
-        # 绘制IP地址
+        # Draw main text
+        painter.setPen(QColor(255, 255, 255, 255))  # White main text
+        # Draw IP address
         painter.drawText(self.width() - margin - painter.fontMetrics().horizontalAdvance(meta_text), 
                         margin + 16, meta_text)
-        # 绘制分辨率信息
+        # Draw resolution info
         painter.drawText(self.width() - margin - painter.fontMetrics().horizontalAdvance(real_fps_text), 
                         margin + 32, real_fps_text)
 
@@ -415,11 +415,11 @@ class PreviewH26xWnd(QWidget):
         self.video_label.setText("Waiting for connect to camera and start stream...")
         layout.addWidget(self.video_label)
         
-        # 创建覆盖层
+        # Create overlay
         self.overlay = OverlayLabel(self.video_label)
         self.overlay.setGeometry(0, 0, self.video_label.width(), self.video_label.height())
-        self.overlay.raise_()  # 确保覆盖层在最上层
-        self.overlay.clear()  # 确保初始状态为空
+        self.overlay.raise_()  # Ensure overlay is on top
+        self.overlay.clear()  # Ensure initial state is empty
         self.overlay.hide()
         
     def start(self, encoder_type='h264'):
@@ -561,11 +561,11 @@ class PreviewH26xWnd(QWidget):
                     
                     # Update overlay if it exists
                     if self.overlay:
-                        # 计算视频画面在窗口中的位置
+                        # Calculate video frame position in window
                         x_offset = (self.video_label.width() - scaled_pixmap.width()) // 2
                         y_offset = (self.video_label.height() - scaled_pixmap.height()) // 2
                         
-                        # 更新覆盖层大小和位置
+                        # Update overlay size and position
                         with self._overlay_lock:
                             self.overlay.setGeometry(x_offset, y_offset, scaled_pixmap.width(), scaled_pixmap.height())
                         
